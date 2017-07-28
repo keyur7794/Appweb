@@ -16,9 +16,23 @@ var io=socketIO(server);
 io.on('connection',(socket)=>{
   console.log('new user connected');
 
+  socket.emit('newMessage',
+{
+  from:'keyur',
+  text:'hello',
+  createAt:'123456'
+});
+
+socket.on('createMessage',(message)=>{
+  console.log('createMessage',message);
+});
+
+
   socket.on('disconnect',()=>{
     console.log('user was disconnect');
   });
+
+
 
 
 });
