@@ -1,5 +1,7 @@
 const path=require('path');
 const http=require('http');
+const {isRealString}=require('./utils/validate');
+const {Users}=require('./utils/users');
 const publicpath =path.join(__dirname,'../public');
 console.log(__dirname+'/../public');
 console.log(publicpath);
@@ -12,15 +14,31 @@ const port=process.env.PORT||3000;
 var app=express();
 var server =http.createServer(app);
 var io=socketIO(server);
+var users=new Users();
 
 io.on('connection',(socket)=>{
   console.log('new user connected');
 
-  socket.emit('newMessage',generateMessage('Admin','Welcome to the chat app'));
+
+socket.on('join',(param,callback)=>{
+
+if(!isRealString(param.name) || !isRealString(param.room) )
+{
+  return callback('name and room are required');
+}
+
+socket.join(param.room);
+users.removeUser(socket.id);
+users.addUser(socket.id,param.name,param.room);
+
+io.to(param.room).emit('updateUserList',users.getUserList(param.room));
+socket.emit('newMessage',generateMessage('Admin','Welcome to the chat app'));
+socket.broadcast.to(param.room).emit('newMessage',generateMessage('Admin',`${param.name} has joined`));
 
 
-  socket.broadcast.emit('newMessage',generateMessage('Admin','New user joined'));
 
+  callback();
+});
 socket.on('createMessage',(message,callback)=>{
   console.log('createMessage',message);
 
@@ -42,7 +60,13 @@ callback('');
 
 
   socket.on('disconnect',()=>{
-    console.log('user was disconnect');
+    var user =users.removeUser(socket.id);
+if(user){
+io.to(user.room).emit('updateUserList',users.getUserList(user.room));
+io.to(user.room).emit('newMessage',generateMessage('admin',`${user.name} has left`));
+
+}
+
   });
 
 
